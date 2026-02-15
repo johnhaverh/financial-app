@@ -1,0 +1,6 @@
+# requirements.txt
+# Minimun requirements for the financial API project
+# FastAPI is the web framework, Uvicorn is the ASGI server, and Pydantic is used for data validation.
+
+# Development dependencies and testing tools
+pytest>=8.3.0
