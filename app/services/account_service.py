@@ -57,6 +57,35 @@ class AccountService:
         account = self.get_account(account_id)
         return account.balance
 
+    def transfer(self, from_account_id: str, to_account_id: str, amount: float) -> None:
+        """
+        Transfer amount from one account to another atomically.
+        
+        Raises:
+            AccountNotFoundError: If source or target account missing
+            InsufficientFundsError: If source has insufficient balance
+            ValueError: If amount <= 0 or same accounts
+        """
+        if from_account_id == to_account_id:
+            raise ValueError("Cannot transfer to the same account")
+
+        if amount <= 0:
+            raise ValueError("Transfer amount must be positive")
+
+        # Get both accounts first (to fail fast)
+        from_account = self.get_account(from_account_id)
+        to_account = self.get_account(to_account_id)
+
+        # Withdraw first (can raise InsufficientFundsError)
+        from_account.withdraw(amount)
+
+        # If withdraw succeeds, deposit
+        try:
+            to_account.deposit(amount)
+        except Exception as e:
+            # Rollback: re-deposit to source if deposit fails (unlikely in memory, but good practice)
+            from_account.deposit(amount)
+            raise e  # Re-raise original error
 
 # Demo
 if __name__ == "__main__":
@@ -68,8 +97,10 @@ if __name__ == "__main__":
     service.deposit("ACC-001", 100.0)
     service.withdraw("ACC-001", 45.0)
     service.deposit("ACC-001", 300.0)
+    service.transfer("ACC-001", "ACC-002", 150.0)
 
     print("All accounts:", service.list_all_accounts())
     print("Balance ACC-001:", service.get_balance("ACC-001"))
     print("Transactions ACC-001:", [tx.__dict__ for tx in service.get_transactions("ACC-001")])
     print("Large transactions (>= 100):", [tx.__dict__ for tx in service.search_transactions_by_amount("ACC-001", 100.0)])
+    print("Balance ACC-002:", service.get_balance("ACC-002"))
