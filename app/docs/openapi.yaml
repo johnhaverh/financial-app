@@ -11,6 +11,7 @@ servers:
 paths:
   /accounts:
     get:
+      tags: [Accounts]
       summary: List all accounts
       responses:
         '200':
@@ -138,6 +139,33 @@ paths:
         '400':
           description: Invalid transfer (same account, insufficient funds, etc.)
 
+  /accounts/{account_id}/transactions:
+    get:
+      summary: List transactions for an account
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: min_amount
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '404':
+          description: Account not found
+
 components:
   schemas:
     AccountSummary:
@@ -184,3 +212,11 @@ components:
           type: number
           format: float
           default: 0.0
+
+    ErrorResponse:
+        type: object
+        properties:
+          detail:
+            type: string
+          code:
+            type: string
