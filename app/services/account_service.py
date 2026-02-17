@@ -97,8 +97,14 @@ if __name__ == "__main__":
     service.deposit("ACC-001", 100.0)
     service.withdraw("ACC-001", 45.0)
     service.deposit("ACC-001", 300.0)
+
+    print("Before transfer:")
+    print("Balance ACC-001:", service.get_balance("ACC-001"))
+    print("Balance ACC-002:", service.get_balance("ACC-002"))
+
     service.transfer("ACC-001", "ACC-002", 150.0)
 
+    print("\nAfter transfer:")
     print("All accounts:", service.list_all_accounts())
     print("Balance ACC-001:", service.get_balance("ACC-001"))
     print("Transactions ACC-001:", [tx.__dict__ for tx in service.get_transactions("ACC-001")])
