@@ -1,0 +1,186 @@
+openapi: 3.1.0
+info:
+  title: Financial App API
+  description: RESTful API for managing financial accounts, transactions, and transfers.
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /accounts:
+    get:
+      summary: List all accounts
+      responses:
+        '200':
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountSummary'
+    post:
+      summary: Create a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetail'
+        '400':
+          description: Invalid input or duplicate ID
+
+  /accounts/{account_id}:
+    get:
+      summary: Get account details by ID
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetail'
+        '404':
+          description: Account not found
+
+  /accounts/{account_id}/deposit:
+    post:
+      summary: Deposit money into account
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  minimum: 0.01
+      responses:
+        '200':
+          description: Deposit successful
+        '400':
+          description: Invalid amount or account not found
+
+  /accounts/{account_id}/withdraw:
+    post:
+      summary: Withdraw money from account
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  minimum: 0.01
+      responses:
+        '200':
+          description: Withdraw successful
+        '400':
+          description: Invalid amount, insufficient funds or account not found
+
+  /accounts/{from_account_id}/transfer:
+    post:
+      summary: Transfer money between accounts
+      parameters:
+        - name: from_account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to_account_id:
+                  type: string
+                amount:
+                  type: number
+                  format: float
+                  minimum: 0.01
+      responses:
+        '200':
+          description: Transfer successful
+        '400':
+          description: Invalid transfer (same account, insufficient funds, etc.)
+
+components:
+  schemas:
+    AccountSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        balance:
+          type: number
+          format: float
+
+    AccountDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        balance:
+          type: number
+          format: float
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+
+    Transaction:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: float
+        type:
+          type: string
+          enum: [deposit, withdraw]
+        timestamp:
+          type: string
+          format: date-time
+
+    AccountCreate:
+      type: object
+      properties:
+        id:
+          type: string
+        initial_balance:
+          type: number
+          format: float
+          default: 0.0
