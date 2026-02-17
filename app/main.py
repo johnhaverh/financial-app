@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.services.account_service import AccountService
 from app.exceptions import AccountNotFoundError, InsufficientFundsError, DuplicateAccountError
+from app.schemas.account import AccountCreate, DepositRequest, TransferRequest, WithdrawRequest
 
 app = FastAPI(
     title="Financial App API",
