@@ -99,7 +99,7 @@ POST    /accounts/{account_id}/transfer     Transfer money between accounts     
 
 ## Current Architecture
 
-<img src="https://github.com/johnhaverh/financial-app/blob/main/app/assets/mermaid-diagram.svg" width="300" />
+<img src="https://github.com/johnhaverh/financial-app/blob/main/app/assets/diagram.png" width="300" />
 
 graph TD
     A[Client / Swagger UI] -->|HTTP Requests + Bearer Token| B[FastAPI Application]
