@@ -27,8 +27,9 @@ Next steps:
 
 1. Clone the repository:
    
-   git clone https://github.com/johnhaverh/financial-app.git
-   cd financial-app
+    ```bash
+    git clone https://github.com/johnhaverh/financial-app.git
+    cd financial-app
 
 2. Create and activate a virtual environment:
     
@@ -48,10 +49,10 @@ Next steps:
 
 ## Runnign the API
 
-    Start the development server:
-
-        ```bash
-        uvicorn app.main:app --reload
+1. Start the development server:
+   
+    ```bash
+    uvicorn app.main:app --reload
     
     Once running, access:
 
@@ -87,30 +88,12 @@ Next steps:
 
 ## Main Endpoints
 
-Method      Endpoint                                Description                 Auth Required
-POST    /token                              Obtain JWT access token                 No
-GET     /accounts                           List all accounts (id + balance)        Yes
-POST    /accounts                           Create a new account                    Yes
-GET     /accounts/{account_id}              Get account details + transactions      Yes
-POST    /accounts/{account_id}/deposit      Deposit money into account              Yes
-POST    /accounts/{account_id}/withdraw     Withdraw money from account             Yes
-POST    /accounts/{account_id}/transfer     Transfer money between accounts         Yes
+<img src="https://github.com/johnhaverh/financial-app/blob/main/app/assets/endpoints.png" width="300" />
 
 
 ## Current Architecture
 
 <img src="https://github.com/johnhaverh/financial-app/blob/main/app/assets/diagram.png" width="300" />
-
-graph TD
-    A[Client / Swagger UI] -->|HTTP Requests + Bearer Token| B[FastAPI Application]
-    B --> C[OAuth2 Dependency<br>get_current_active_user]
-    C --> D[JWT Validation<br>+ In-Memory Users DB]
-    B --> E[AccountService<br>(In-Memory Storage)]
-    E --> F[Data Models<br>Account, Transaction]
-    E --> G[Custom Exceptions]
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style E fill:#dfd,stroke:#333
 
 ## Contributing
 Feel free to open issues or pull requests. Suggestions for improvements (e.g., adding real database, Docker, tests coverage) are welcome!
