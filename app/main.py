@@ -1,31 +1,47 @@
 # app/main.py
+from datetime import timedelta
 from fastapi import FastAPI, HTTPException, Path, Body, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field, PositiveFloat
-from datetime import timedelta
+from typing import List, Dict, Any
 
 from app.services.account_service import AccountService
 from app.exceptions import AccountNotFoundError, InsufficientFundsError, DuplicateAccountError
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.config import settings
-from app.schemas.token import Token, TokenData
+from app.schemas.token import Token
 from app.schemas.user import User, UserInDB
 from app.schemas.account import AccountCreate, DepositRequest, WithdrawRequest, TransferRequest
 
 app = FastAPI(
     title="Financial App API",
-    description="RESTful API for managing financial accounts and transactions",
+    description=(
+        "RESTful API for managing financial accounts, transactions, deposits, withdrawals, and transfers. "
+        "Includes basic JWT authentication."
+    ),
     version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {
+            "name": "Auth",
+            "description": "Authentication endpoints (login and token generation)"
+        },
+        {
+            "name": "Accounts",
+            "description": "Operations on accounts: create, list, detail, deposit, withdraw, transfer"
+        },
+    ],
 )
 
-# Fake users DB (in-memory, replace with real DB later)
+# Fake users database (in-memory for development - replace with real DB later)
 fake_users_db = {
     "johndoe": {
         "username": "johndoe",
         "full_name": "John Doe",
         "email": "johndoe@example.com",
-        "hashed_password": get_password_hash("secret123"),  # hashed
+        "hashed_password": get_password_hash("secret123"),
         "disabled": False,
     },
     "alice": {
@@ -44,6 +60,7 @@ def get_user(db, username: str):
         user_dict = db[username]
         return UserInDB(**user_dict)
 
+
 def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
     if not user:
@@ -51,6 +68,7 @@ def authenticate_user(fake_db, username: str, password: str):
     if not verify_password(password, user.hashed_password):
         return None
     return user
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -72,18 +90,28 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
+
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Instancia del servicio in-memory
+
+# In-memory account service instance
 account_service = AccountService()
 
-@app.post("/token", response_model=Token)
+
+@app.post("/token", response_model=Token, tags=["Auth"])
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
+    """
+    Authenticate user and return JWT access token.
+
+    Test credentials:
+    - username: johndoe
+    - password: secret123
+    """
     user = authenticate_user(fake_users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -97,32 +125,53 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/accounts")
+
+@app.get("/accounts", response_model=List[Dict[str, Any]], tags=["Accounts"])
 def list_accounts(current_user: User = Depends(get_current_active_user)):
+    """List all accounts (summary view: id and current balance)."""
     return account_service.list_all_accounts()
 
-@app.post("/accounts", status_code=201)
-def create_account(account: AccountCreate, current_user: User = Depends(get_current_active_user)):
+
+@app.post("/accounts", status_code=201, response_model=Dict[str, Any], tags=["Accounts"])
+def create_account(
+    account: AccountCreate,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new account with given ID and optional initial balance."""
     try:
         created = account_service.create_account(account.id, account.initial_balance)
         return {"id": created.id, "balance": created.balance}
     except DuplicateAccountError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/accounts/{account_id}")
-def get_account(account_id: str = Path(...), current_user: User = Depends(get_current_active_user)):
+
+@app.get("/accounts/{account_id}", response_model=Dict[str, Any], tags=["Accounts"])
+def get_account(
+    account_id: str = Path(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get detailed account information including transaction history."""
     try:
         acc = account_service.get_account(account_id)
         return {
             "id": acc.id,
             "balance": acc.balance,
-            "transactions": [{"amount": t.amount, "type": t.type, "timestamp": t.timestamp.isoformat()} for t in acc.transactions]
+            "transactions": [
+                {"amount": t.amount, "type": t.type, "timestamp": t.timestamp.isoformat()}
+                for t in acc.transactions
+            ]
         }
     except AccountNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@app.post("/accounts/{account_id}/deposit")
-def deposit(account_id: str = Path(...), req: DepositRequest = Body(...), current_user: User = Depends(get_current_active_user)):
+
+@app.post("/accounts/{account_id}/deposit", response_model=Dict[str, float], tags=["Accounts"])
+def deposit(
+    account_id: str = Path(...),
+    req: DepositRequest = Body(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Deposit money into the specified account."""
     try:
         acc = account_service.deposit(account_id, req.amount)
         return {"balance": acc.balance}
@@ -131,8 +180,14 @@ def deposit(account_id: str = Path(...), req: DepositRequest = Body(...), curren
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/accounts/{account_id}/withdraw")
-def withdraw(account_id: str = Path(...), req: WithdrawRequest = Body(...), current_user: User = Depends(get_current_active_user)):
+
+@app.post("/accounts/{account_id}/withdraw", response_model=Dict[str, float], tags=["Accounts"])
+def withdraw(
+    account_id: str = Path(...),
+    req: WithdrawRequest = Body(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Withdraw money from the specified account."""
     try:
         acc = account_service.withdraw(account_id, req.amount)
         return {"balance": acc.balance}
@@ -143,8 +198,14 @@ def withdraw(account_id: str = Path(...), req: WithdrawRequest = Body(...), curr
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/accounts/{account_id}/transfer")
-def transfer(account_id: str = Path(...), req: TransferRequest = Body(...), current_user: User = Depends(get_current_active_user)):
+
+@app.post("/accounts/{account_id}/transfer", response_model=Dict[str, str], tags=["Accounts"])
+def transfer(
+    account_id: str = Path(...),
+    req: TransferRequest = Body(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Transfer money from one account to another."""
     try:
         account_service.transfer(account_id, req.to_account_id, req.amount)
         return {"message": f"Transferred {req.amount} from {account_id} to {req.to_account_id}"}

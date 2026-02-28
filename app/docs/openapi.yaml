@@ -165,7 +165,19 @@ paths:
                   $ref: '#/components/schemas/Transaction'
         '404':
           description: Account not found
-
+  /token:
+    post:
+      tags: [Auth]
+      summary: Login and get token JWT
+      description: Autentication with username/password and return token Bearer.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username: {type: string, example: johndoe}
+                password: {type: string, example: secret123}
 components:
   schemas:
     AccountSummary:
